@@ -5,10 +5,11 @@ let gameOptions = {
   gameHeight: 1300,
   floorStart: 1 / 8 * 5,
   floorGap: 250,
-  playerGravity: 4500,
+  playerGravity: 10000,
   playerSpeed: 450,
   climbSpeed: 450,
-  playerJump: 900
+  playerJump: 1800,
+  diamondRatio: 2
 }
 
 window.onload = function () {
@@ -29,6 +30,7 @@ preloadGame.prototype = {
     game.load.image("ground", "/assets/ground.png");
     game.load.image("hero", "/assets/hero.png");
     game.load.image("ladder", "/assets/ladder.png");
+    game.load.image("ladder", "/assets/diamond.png");
   },
 
   create: function () {
@@ -54,16 +56,52 @@ playGame.prototype = {
     this.highestFloorY = game.height * gameOptions.floorStart;
     this.floorArray = [];
     this.ladderArray = [];
-    while(this.highestFloorY > - 3 * gameOptions.floorGap) {
+    this.diamondArray = [null];
+    this.diamondPool = [];
+
+    while (this.highestFloorY > - 3 * gameOptions.floorGap) {
       this.addFloor();
-      if(this.currentFloor > 0) {
+      if (this.currentFloor > 0) {
         this.addLadder();
+        this.addDiamond();
       }
       this.highestFloorY -= gameOptions.floorGap;
       this.currentFloor ++;
     }
     this.currentFloor = 0;
     this.addHero();
+  },
+
+  //addDiamond
+  addDiamond: function () {
+    if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
+      var diamond = game.add.sprite(game.rnd.integerInRange(150, game.width - 150), this.highestFloorY - gameOptions.floorGap / 2, "diamond");
+      diamond.anchor.set(0.5, 0);
+      game.physics.enable(diamond, Phaser.Physics.ARCADE);
+      diamond.body.immovable = true;
+      this.diamondGroup.add(diamond);
+      this.diamondArray[this.currentFloor] = diamond;
+    } else{
+      this.diamondArray[this.currentFloor] = null;
+    }
+  },
+  //reviveDiamond
+  reviveDiamond: function () {
+    if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
+      if (this.diamondPool.length > 0) {
+        var diamond = this.diamondPool.pop();
+        diamond.y = this.highestFloorY - gameOptions.floorGap / 2;
+        diamond.revive();
+        this.diamondArray[this.currentFloor] = diamond;
+      } else {
+        var diamond = game.add.sprite(game.rnd.integerInRange(150, game.width - 150), this.highestFloorY - gameOptions.floorGap / 2, "diamond");
+        diamond.anchor.set(0.5, 0);
+        game.physics.enable(diamond, Phaser.Physics.ARCADE);
+        diamond.body.immovable = true;
+        this.diamondGroup.add(diamond);
+        this.diamondArray[this.currentFloor] = diamond;
+      }
+    }
   },
 
   addFloor: function () {
@@ -126,13 +164,21 @@ playGame.prototype = {
       floor.y = this.highestFloorY;
       floor.alpha =1;
     }, this);
+    this.fallTween = game.add.tween(this.ladderArray[0]).to({
+        y: game.height
+    }, 200, Phaser.Easing.Cubic.Out);
+    this.fallTween.onComplete.add(function(ladder){
+        ladder.y = this.highestFloorY
+    }, this);
   },
   defineGroups: function() {
     this.gameGroup = game.add.group();
     this.floorGroup = game.add.group();
     this.ladderGroup = game.add.group();
+    this.diamondGroup = game.add.group();
     this.gameGroup.add(this.floorGroup);
     this.gameGroup.add(this.ladderGroup);
+    this.gameGroup.add(this.diamondGroup);
   },
 
   handleTap: function(pointer, doubleTap) {
@@ -145,6 +191,7 @@ playGame.prototype = {
   update: function () {
     this.checkFloorCollision();
     this.checkLadderCollision();
+    this.checkDiamondCollision();
     this.heroOnLadder();
   },
 
@@ -161,20 +208,37 @@ playGame.prototype = {
         this.hero.body.gravity.y = 0;
         this.isClimbing = true;
         this.fadeTween.target =  this.floorArray[this.currentFloor];
-        this.currentFloor = (this.currentFloor + 1) % this.floorArray.length;
         this.fadeTween.start();
+
+        if (this.diamondArray[this.currentFloor] != null) {
+          this.killDiamond();
+        }
+        this.reviveDiamond();
+        this.currentFloor = (this.currentFloor + 1) % this.floorArray.length;
         this.scrollTween.start();
       }
     }, null, this);
   },
+
+  checkDiamondCollision: function () {
+    game.physics.arcade.overlap(this.hero, this.diamondArray, function(player, diamond) {
+      this.killDiamond();
+    }, null, this);
+  },
+  killDiamond: function () {
+    this.diamondArray[this.currentFloor].kill();
+    this.diamondPool.push(this.diamondArray[this.currentFloor]);
+    this.diamondArray[this.currentFloor] = null;
+  },
+
   heroOnLadder: function () {
     if (this.isClimbing && this.hero.y <= this.floorArray[this.currentFloor].y - 40) {
       this.hero.body.gravity.y = gameOptions.playerGravity;
       this.hero.body.velocity.x = gameOptions.playerSpeed * this.hero.scale.x;
       this.hero.body.velocity.y = 0;
       this.isClimbing = false;
-      this.fadeTween.target =  this.ladderArray[this.currentLadder];
-      this.fadeTween.start();
+      this.fallTween.target =  this.ladderArray[this.currentLadder];
+      this.fallTween.start();
       this.currentLadder = (this.currentLadder + 1) % this.ladderArray.length;
     }
   }
