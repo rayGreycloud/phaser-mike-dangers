@@ -4,6 +4,7 @@ let gameOptions = {
   gameWidth: 800,
   gameHeight: 1300,
   floorStart: 1 / 8 * 5,
+  floorGap: 250,
   playerGravity: 4500,
   playerSpeed: 450,
   climbSpeed: 450,
@@ -12,7 +13,7 @@ let gameOptions = {
 
 window.onload = function () {
   game = new Phaser.Game(gameOptions.gameWidth, gameOptions.gameHeight);
-  game.state.add("PreloadGame", preloadgGme);
+  game.state.add("PreloadGame", preloadGame);
   game.state.add("PlayGame", playGame);
   game.state.start("PreloadGame");
 }
@@ -25,9 +26,9 @@ preloadGame.prototype = {
     game.scale.pageAlignHorizontally = true;
     game.scale.pageAlignVertically = true;
     game.stage.disableVisibilityChange = true;
-    game.load.image("ground", "ground.png");
-    game.load.image("hero", "hero.png");
-    game.load.image("ladder", "ladder.png");
+    game.load.image("ground", "/assets/ground.png");
+    game.load.image("hero", "/assets/hero.png");
+    game.load.image("ladder", "/assets/ladder.png");
   },
 
   create: function () {
@@ -52,8 +53,8 @@ playGame.prototype = {
     this.currentLadder = 0;
     this.highestFloorY = game.height * gameOptions.floorStart;
     this.floorArray = [];
-    this.laddreArray = [];
-    while(this.highestFloory > - 3 * gameOptions.floorGap) {
+    this.ladderArray = [];
+    while(this.highestFloorY > - 3 * gameOptions.floorGap) {
       this.addFloor();
       if(this.currentFloor > 0) {
         this.addLadder();
@@ -66,7 +67,7 @@ playGame.prototype = {
   },
 
   addFloor: function () {
-    let floor = game.add.sprite(0, this.highestFloorY, "ground");
+    var floor = game.add.sprite(0, this.highestFloorY, "ground");
     this.floorGroup.add(floor);
     game.physics.enable(floor, Phaser.Physics.ARCADE);
     floor.body.immovable = true;
@@ -75,7 +76,7 @@ playGame.prototype = {
   },
 
   addLadder: function () {
-    let ladder = game.add.sprite(100 + (game.width - 200) * (this.currentFloor % 2), this.highestFloorY, "ladder");
+    var ladder = game.add.sprite(100 + (game.width - 200) * (this.currentFloor % 2), this.highestFloorY, "ladder");
     this.ladderGroup.add(ladder);
     ladder.anchor.set(0.5, 0);
     game.physics.enable(ladder, Phaser.Physics.ARCADE);
