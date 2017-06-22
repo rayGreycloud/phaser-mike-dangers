@@ -30,7 +30,7 @@ preloadGame.prototype = {
     game.load.image("ground", "/assets/ground.png");
     game.load.image("hero", "/assets/hero.png");
     game.load.image("ladder", "/assets/ladder.png");
-    game.load.image("ladder", "/assets/diamond.png");
+    game.load.image("diamond", "/assets/diamond.png");
   },
 
   create: function () {
@@ -72,7 +72,6 @@ playGame.prototype = {
     this.addHero();
   },
 
-  //addDiamond
   addDiamond: function () {
     if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
       var diamond = game.add.sprite(game.rnd.integerInRange(150, game.width - 150), this.highestFloorY - gameOptions.floorGap / 2, "diamond");
@@ -85,7 +84,7 @@ playGame.prototype = {
       this.diamondArray[this.currentFloor] = null;
     }
   },
-  //reviveDiamond
+
   reviveDiamond: function () {
     if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
       if (this.diamondPool.length > 0) {
@@ -155,8 +154,11 @@ playGame.prototype = {
       this.ladderGroup.forEach(function(item) {
         item.y += gameOptions.floorGap;
       }, this);
+      this.diamondGroup.forEach(function(item) {
+        item.y += gameOptions.floorGap;
+      }, this);
       this.hero.y += gameOptions.floorGap;
-    }, this)
+    }, this);
     this.fadeTween = game.add.tween(this.floorArray[0]).to({
         alpha: 0
     }, 200, Phaser.Easing.Cubic.Out);
