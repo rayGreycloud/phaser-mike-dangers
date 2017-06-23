@@ -38,9 +38,10 @@ preloadGame.prototype = {
   }
 }
 
-let playGame = function (game) {}
+let playGame = function(game) {}
 playGame.prototype = {
-  create: function () {
+  create: function() {
+    this.gameOver = false;
     game.physics.startSystem(Phaser.Physics.ARCADE);
     this.canJump = true;
     this.isClimbing = false;
@@ -49,61 +50,98 @@ playGame.prototype = {
     this.defineTweens();
     game.input.onTap.add(this.handleTap, this);
   },
-
-  drawLevel: function () {
+  drawLevel: function() {
     this.currentFloor = 0;
     this.currentLadder = 0;
     this.highestFloorY = game.height * gameOptions.floorStart;
     this.floorArray = [];
     this.ladderArray = [];
-    this.diamondArray = [null];
+    this.diamondArray = [
+      []
+    ];
     this.diamondPool = [];
-
+    this.spikeArray = [
+      []
+    ];
+    this.spikePool = [];
     while (this.highestFloorY > - 3 * gameOptions.floorGap) {
       this.addFloor();
+      this.addLadder();
       if (this.currentFloor > 0) {
-        this.addLadder();
         this.addDiamond();
+        this.addSpikes();
       }
       this.highestFloorY -= gameOptions.floorGap;
-      this.currentFloor ++;
+      this.currentFloor++;
     }
     this.currentFloor = 0;
     this.addHero();
   },
-
-  addDiamond: function () {
+  addSpikes: function() {
+    this.spikeArray[this.currentFloor] = [];
+    this.addSpike();
+    if (game.rnd.integerInRange(0, gameOptions.doubleSpikeRatio) == 0) {
+      this.addSpike();
+    }
+  },
+  addSpike: function() {
+    var spike = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY - 20, "spike");
+    spike.anchor.set(0.5, 0);
+    game.physics.enable(spike, Phaser.Physics.ARCADE);
+    spike.body.immovable = true;
+    this.spikeGroup.add(spike);
+    this.spikeArray[this.currentFloor].push(spike);
+  },
+  addDiamond: function() {
+    this.diamondArray[this.currentFloor] = [];
     if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
-      var diamond = game.add.sprite(game.rnd.integerInRange(150, game.width - 150), this.highestFloorY - gameOptions.floorGap / 2, "diamond");
+      var diamond = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY - gameOptions.floorGap / 2, "diamond");
       diamond.anchor.set(0.5, 0);
       game.physics.enable(diamond, Phaser.Physics.ARCADE);
       diamond.body.immovable = true;
       this.diamondGroup.add(diamond);
-      this.diamondArray[this.currentFloor] = diamond;
-    } else{
-      this.diamondArray[this.currentFloor] = null;
+      this.diamondArray[this.currentFloor].push(diamond);
     }
   },
-
-  reviveDiamond: function () {
+  reviveDiamond: function() {
     if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
       if (this.diamondPool.length > 0) {
         var diamond = this.diamondPool.pop();
-        diamond.y = this.highestFloorY - gameOptions.floorGap / 2;
         diamond.revive();
-        this.diamondArray[this.currentFloor] = diamond;
+        diamond.y = this.highestFloorY + gameOptions.floorGap - gameOptions.floorGap / 2;
+        this.diamondArray[this.prevFloor].push(diamond);
       } else {
-        var diamond = game.add.sprite(game.rnd.integerInRange(150, game.width - 150), this.highestFloorY - gameOptions.floorGap / 2, "diamond");
+        var diamond = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY + gameOptions.floorGap - gameOptions.floorGap / 2, "diamond");
         diamond.anchor.set(0.5, 0);
         game.physics.enable(diamond, Phaser.Physics.ARCADE);
         diamond.body.immovable = true;
         this.diamondGroup.add(diamond);
-        this.diamondArray[this.currentFloor] = diamond;
+        this.diamondArray[this.prevFloor].push(diamond);
       }
     }
   },
-
-  addFloor: function () {
+  reviveSpike: function() {
+    var spikes = 1;
+    if (game.rnd.integerInRange(0, gameOptions.doubleSpikeRatio) == 0) {
+      spikes = 2;
+    }
+    for (var i = 1; i <= spikes; i++) {
+      if (this.spikePool.length > 0) {
+        var spike = this.spikePool.pop();
+        spike.y = this.highestFloorY + gameOptions.floorGap - 20;
+        spike.revive();
+        this.spikeArray[this.prevFloor].push(spike);
+      } else {
+        var spike = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY + gameOptions.floorGap - 20, "spike");
+        spike.anchor.set(0.5, 0);
+        game.physics.enable(spike, Phaser.Physics.ARCADE);
+        spike.body.immovable = true;
+        this.spikeGroup.add(spike);
+        this.spikeArray[this.prevFloor].push(spike);
+      }
+    }
+  },
+  addFloor: function() {
     var floor = game.add.sprite(0, this.highestFloorY, "ground");
     this.floorGroup.add(floor);
     game.physics.enable(floor, Phaser.Physics.ARCADE);
@@ -111,17 +149,15 @@ playGame.prototype = {
     floor.body.checkCollision.down = false;
     this.floorArray.push(floor);
   },
-
-  addLadder: function () {
-    var ladder = game.add.sprite(100 + (game.width - 200) * (this.currentFloor % 2), this.highestFloorY, "ladder");
+  addLadder: function() {
+    var ladder = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY - gameOptions.floorGap, "ladder");
     this.ladderGroup.add(ladder);
     ladder.anchor.set(0.5, 0);
     game.physics.enable(ladder, Phaser.Physics.ARCADE);
     ladder.body.immovable = true;
     this.ladderArray.push(ladder);
   },
-
-  addHero: function () {
+  addHero: function() {
     this.hero = game.add.sprite(game.width / 2, game.height * gameOptions.floorStart - 40, "hero");
     this.gameGroup.add(this.hero)
     this.hero.anchor.set(0.5, 0);
@@ -139,110 +175,144 @@ playGame.prototype = {
         this.hero.body.velocity.x = -gameOptions.playerSpeed;
         this.hero.scale.x = -1;
       }
+      if (down) {
+        game.state.start("PlayGame");
+      }
     }, this)
   },
-
-  defineTweens: function () {
+  defineTweens: function() {
     this.scrollTween = game.add.tween(this.gameGroup).to({
       y: gameOptions.floorGap
     }, 800, Phaser.Easing.Cubic.Out);
-    this.scrollTween.onComplete.add(function () {
+    this.scrollTween.onComplete.add(function() {
       this.gameGroup.y = 0;
-      this.floorGroup.forEach(function(item) {
-        item.y += gameOptions.floorGap;
+      this.gameGroup.forEach(function(item) {
+        if (item.length > 0) {
+          item.forEach(function(subItem) {
+            subItem.y += gameOptions.floorGap;
+          }, this);
+        } else {
+          item.y += gameOptions.floorGap;
+        }
       }, this);
-      this.ladderGroup.forEach(function(item) {
-        item.y += gameOptions.floorGap;
-      }, this);
-      this.diamondGroup.forEach(function(item) {
-        item.y += gameOptions.floorGap;
-      }, this);
-      this.hero.y += gameOptions.floorGap;
     }, this);
-    this.fadeTween = game.add.tween(this.floorArray[0]).to({
-        alpha: 0
-    }, 200, Phaser.Easing.Cubic.Out);
-    this.fadeTween.onComplete.add(function(floor) {
-      floor.y = this.highestFloorY;
-      floor.alpha =1;
-    }, this);
-    this.fallTween = game.add.tween(this.ladderArray[0]).to({
-        y: game.height
-    }, 200, Phaser.Easing.Cubic.Out);
-    this.fallTween.onComplete.add(function(ladder){
-        ladder.y = this.highestFloorY
-    }, this);
+    this.fallingLevelTween = game.add.tween(this.fallingLevelGroup).to({
+      y: game.height / 2
+    }, 500, Phaser.Easing.Cubic.Out);
+    this.fallingLevelTween.onComplete.add(function() {
+      var numChildren = this.fallingLevelGroup.total;
+      for (var i = numChildren - 1; i >= 0; i--) {
+        switch (this.fallingLevelGroup.children[i].key) {
+          case "ladder":
+            console.log(i + "ladder")this.ladderGroup.add(this.fallingLevelGroup.children[i]);
+            this.ladderGroup.children[this.ladderGroup.total - 1].y = this.highestFloorY;
+            break;
+          case "ground":
+            console.log(i + "ground")this.floorGroup.add(this.fallingLevelGroup.children[i]);
+            this.floorGroup.children[this.floorGroup.total - 1].y = this.highestFloorY + gameOptions.floorGap;
+            break;
+          case "diamond":
+            this.diamondGroup.add(this.fallingLevelGroup.children[i]);
+            this.killDiamond(Phaser.Math.wrap(this.currentFloor - 1, 0, this.floorArray.length));
+            break;
+          case "spike":
+            this.spikeGroup.add(this.fallingLevelGroup.children[i]);
+            this.killSpike(Phaser.Math.wrap(this.currentFloor - 1, 0, this.floorArray.length));
+        }
+      }
+      this.fallingLevelGroup.y = 0;
+      this.reviveDiamond();
+      this.reviveSpike();
+    }, this)
   },
   defineGroups: function() {
     this.gameGroup = game.add.group();
     this.floorGroup = game.add.group();
     this.ladderGroup = game.add.group();
     this.diamondGroup = game.add.group();
+    this.spikeGroup = game.add.group();
+    this.fallingLevelGroup = game.add.group();
     this.gameGroup.add(this.floorGroup);
     this.gameGroup.add(this.ladderGroup);
     this.gameGroup.add(this.diamondGroup);
+    this.gameGroup.add(this.spikeGroup);
+    this.gameGroup.add(this.fallingLevelGroup);
   },
-
   handleTap: function(pointer, doubleTap) {
-    if(this.canJump && !this.isClimbing){
+    if (this.canJump && !this.isClimbing && !this.gameOver) {
       this.hero.body.velocity.y = -gameOptions.playerJump;
       this.canJump = false;
     }
   },
-
-  update: function () {
-    this.checkFloorCollision();
-    this.checkLadderCollision();
-    this.checkDiamondCollision();
-    this.heroOnLadder();
+  update: function() {
+    if (!this.gameOver) {
+      this.checkFloorCollision();
+      this.checkLadderCollision();
+      this.checkDiamondCollision();
+      this.checkSpikeCollision();
+      this.heroOnLadder();
+    }
   },
-
-  checkFloorCollision: function () {
-    game.physics.arcade.collide(this.hero, this.floorArray, function () {
+  checkFloorCollision: function() {
+    game.physics.arcade.collide(this.hero, this.floorArray[this.currentFloor], function() {
       this.canJump = true;
     }, null, this);
   },
-  checkLadderCollision: function () {
-    game.physics.arcade.overlap(this.hero, this.ladderArray, function (player, ladder) {
+  checkLadderCollision: function() {
+    game.physics.arcade.overlap(this.hero, this.ladderArray, function(player, ladder) {
       if (!this.isClimbing && Math.abs(player.x - ladder.x) < 10) {
         this.hero.body.velocity.x = 0;
-        this.hero.body.velocity.y = - gameOptions.climbSpeed;
+        this.hero.body.velocity.y = -gameOptions.climbSpeed;
         this.hero.body.gravity.y = 0;
         this.isClimbing = true;
-        this.fadeTween.target =  this.floorArray[this.currentFloor];
-        this.fadeTween.start();
-
-        if (this.diamondArray[this.currentFloor] != null) {
-          this.killDiamond();
-        }
-        this.reviveDiamond();
-        this.currentFloor = (this.currentFloor + 1) % this.floorArray.length;
         this.scrollTween.start();
       }
     }, null, this);
   },
-
-  checkDiamondCollision: function () {
-    game.physics.arcade.overlap(this.hero, this.diamondArray, function(player, diamond) {
-      this.killDiamond();
+  checkDiamondCollision: function() {
+    game.physics.arcade.overlap(this.hero, this.diamondArray[this.currentFloor], function() {
+      this.killDiamond(this.currentFloor);
     }, null, this);
   },
-  killDiamond: function () {
-    this.diamondArray[this.currentFloor].kill();
-    this.diamondPool.push(this.diamondArray[this.currentFloor]);
-    this.diamondArray[this.currentFloor] = null;
+  checkSpikeCollision: function() {
+    game.physics.arcade.overlap(this.hero, this.spikeArray[this.currentFloor], function() {
+      this.gameOver = true;
+      this.hero.body.velocity.x = game.rnd.integerInRange(-20, 20);
+      this.hero.body.velocity.y = -gameOptions.playerJump
+    }, null, this);
   },
-
-  heroOnLadder: function () {
-    if (this.isClimbing && this.hero.y <= this.floorArray[this.currentFloor].y - 40) {
+  killDiamond: function(floor) {
+    for (var i = 0; i < this.diamondArray[floor].length; i++) {
+      this.diamondArray[floor][i].kill();
+      this.diamondPool.push(this.diamondArray[floor][i]);
+    }
+    this.diamondArray[floor] = [];
+  },
+  killSpike: function(floor) {
+    for (var i = 0; i < this.spikeArray[floor].length; i++) {
+      this.spikeArray[floor][i].kill();
+      this.spikePool.push(this.spikeArray[floor][i]);
+    }
+    this.spikeArray[floor] = [];
+  },
+  heroOnLadder: function() {
+    if (this.isClimbing && this.hero.y <= this.floorArray[this.currentFloor].y - gameOptions.floorGap - 40) {
       this.hero.body.gravity.y = gameOptions.playerGravity;
       this.hero.body.velocity.x = gameOptions.playerSpeed * this.hero.scale.x;
       this.hero.body.velocity.y = 0;
       this.isClimbing = false;
-      this.fallTween.target =  this.ladderArray[this.currentLadder];
-      this.fallTween.start();
-      this.currentLadder = (this.currentLadder + 1) % this.ladderArray.length;
+      this.fallingLevelGroup.add(this.floorArray[this.currentFloor]);
+      this.fallingLevelGroup.add(this.ladderArray[this.currentFloor]);
+      for (var i = 0; i < this.diamondArray[this.currentFloor].length; i++) {
+        this.fallingLevelGroup.add(this.diamondArray[this.currentFloor][i]);
+      }
+      for (i = 0; i < this.spikeArray[this.currentFloor].length; i++) {
+        this.fallingLevelGroup.add(this.spikeArray[this.currentFloor][i]);
+      }
+      this.fallingLevelGroup
+      this.fallingLevelTween.start();
+      this.prevFloor = this.currentFloor;
+      this.currentFloor = Phaser.Math.wrap(this.currentFloor + 1, 0, this.floorArray.length);
     }
   }
-
 }
