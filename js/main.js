@@ -12,6 +12,9 @@ let gameOptions = {
   diamondRatio: 2
 }
 
+//
+let preloadGame = new PreloadGame(game);
+
 window.onload = function () {
   game = new Phaser.Game(gameOptions.gameWidth, gameOptions.gameHeight);
   game.state.add("PreloadGame", preloadGame);
@@ -19,24 +22,24 @@ window.onload = function () {
   game.state.start("PreloadGame");
 }
 
-let preloadGame = function (game) {}
-preloadGame.prototype = {
-  preload: function () {
-    game.stage.backgroundColor = 0xaaeaff;
-    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
-    game.scale.pageAlignHorizontally = true;
-    game.scale.pageAlignVertically = true;
-    game.stage.disableVisibilityChange = true;
-    game.load.image("ground", "/assets/ground.png");
-    game.load.image("hero", "/assets/hero.png");
-    game.load.image("ladder", "/assets/ladder.png");
-    game.load.image("diamond", "/assets/diamond.png");
-  },
-
-  create: function () {
-    game.state.start("PlayGame");
-  }
-}
+// let preloadGame = function (game) {}
+// preloadGame.prototype = {
+//   preload: function () {
+//     game.stage.backgroundColor = 0xaaeaff;
+//     game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+//     game.scale.pageAlignHorizontally = true;
+//     game.scale.pageAlignVertically = true;
+//     game.stage.disableVisibilityChange = true;
+//     game.load.image("ground", "/assets/ground.png");
+//     game.load.image("hero", "/assets/hero.png");
+//     game.load.image("ladder", "/assets/ladder.png");
+//     game.load.image("diamond", "/assets/diamond.png");
+//   },
+//
+//   create: function () {
+//     game.state.start("PlayGame");
+//   }
+// }
 
 let playGame = function(game) {}
 playGame.prototype = {
@@ -77,14 +80,14 @@ playGame.prototype = {
     this.currentFloor = 0;
     this.addHero();
   },
-  addSpikes: function() {
+  addSpikes: function () {
     this.spikeArray[this.currentFloor] = [];
     this.addSpike();
     if (game.rnd.integerInRange(0, gameOptions.doubleSpikeRatio) == 0) {
       this.addSpike();
     }
   },
-  addSpike: function() {
+  addSpike: function () {
     var spike = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY - 20, "spike");
     spike.anchor.set(0.5, 0);
     game.physics.enable(spike, Phaser.Physics.ARCADE);
@@ -92,7 +95,7 @@ playGame.prototype = {
     this.spikeGroup.add(spike);
     this.spikeArray[this.currentFloor].push(spike);
   },
-  addDiamond: function() {
+  addDiamond: function () {
     this.diamondArray[this.currentFloor] = [];
     if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
       var diamond = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY - gameOptions.floorGap / 2, "diamond");
@@ -103,7 +106,7 @@ playGame.prototype = {
       this.diamondArray[this.currentFloor].push(diamond);
     }
   },
-  reviveDiamond: function() {
+  reviveDiamond: function () {
     if (game.rnd.integerInRange(0, gameOptions.diamondRatio) != 0) {
       if (this.diamondPool.length > 0) {
         var diamond = this.diamondPool.pop();
@@ -120,7 +123,7 @@ playGame.prototype = {
       }
     }
   },
-  reviveSpike: function() {
+  reviveSpike: function () {
     var spikes = 1;
     if (game.rnd.integerInRange(0, gameOptions.doubleSpikeRatio) == 0) {
       spikes = 2;
@@ -141,7 +144,7 @@ playGame.prototype = {
       }
     }
   },
-  addFloor: function() {
+  addFloor: function () {
     var floor = game.add.sprite(0, this.highestFloorY, "ground");
     this.floorGroup.add(floor);
     game.physics.enable(floor, Phaser.Physics.ARCADE);
@@ -149,7 +152,7 @@ playGame.prototype = {
     floor.body.checkCollision.down = false;
     this.floorArray.push(floor);
   },
-  addLadder: function() {
+  addLadder: function () {
     var ladder = game.add.sprite(game.rnd.integerInRange(50, game.width - 50), this.highestFloorY - gameOptions.floorGap, "ladder");
     this.ladderGroup.add(ladder);
     ladder.anchor.set(0.5, 0);
@@ -157,7 +160,7 @@ playGame.prototype = {
     ladder.body.immovable = true;
     this.ladderArray.push(ladder);
   },
-  addHero: function() {
+  addHero: function () {
     this.hero = game.add.sprite(game.width / 2, game.height * gameOptions.floorStart - 40, "hero");
     this.gameGroup.add(this.hero)
     this.hero.anchor.set(0.5, 0);
@@ -180,11 +183,11 @@ playGame.prototype = {
       }
     }, this)
   },
-  defineTweens: function() {
+  defineTweens: function () {
     this.scrollTween = game.add.tween(this.gameGroup).to({
       y: gameOptions.floorGap
     }, 800, Phaser.Easing.Cubic.Out);
-    this.scrollTween.onComplete.add(function() {
+    this.scrollTween.onComplete.add(function () {
       this.gameGroup.y = 0;
       this.gameGroup.forEach(function(item) {
         if (item.length > 0) {
@@ -199,16 +202,16 @@ playGame.prototype = {
     this.fallingLevelTween = game.add.tween(this.fallingLevelGroup).to({
       y: game.height / 2
     }, 500, Phaser.Easing.Cubic.Out);
-    this.fallingLevelTween.onComplete.add(function() {
+    this.fallingLevelTween.onComplete.add(function () {
       var numChildren = this.fallingLevelGroup.total;
       for (var i = numChildren - 1; i >= 0; i--) {
         switch (this.fallingLevelGroup.children[i].key) {
           case "ladder":
-            console.log(i + "ladder")this.ladderGroup.add(this.fallingLevelGroup.children[i]);
+            // console.log(i + "ladder")this.ladderGroup.add(this.fallingLevelGroup.children[i]);
             this.ladderGroup.children[this.ladderGroup.total - 1].y = this.highestFloorY;
             break;
           case "ground":
-            console.log(i + "ground")this.floorGroup.add(this.fallingLevelGroup.children[i]);
+            // console.log(i + "ground")this.floorGroup.add(this.fallingLevelGroup.children[i]);
             this.floorGroup.children[this.floorGroup.total - 1].y = this.highestFloorY + gameOptions.floorGap;
             break;
           case "diamond":
@@ -225,7 +228,7 @@ playGame.prototype = {
       this.reviveSpike();
     }, this)
   },
-  defineGroups: function() {
+  defineGroups: function () {
     this.gameGroup = game.add.group();
     this.floorGroup = game.add.group();
     this.ladderGroup = game.add.group();
@@ -244,7 +247,7 @@ playGame.prototype = {
       this.canJump = false;
     }
   },
-  update: function() {
+  update: function () {
     if (!this.gameOver) {
       this.checkFloorCollision();
       this.checkLadderCollision();
@@ -253,12 +256,12 @@ playGame.prototype = {
       this.heroOnLadder();
     }
   },
-  checkFloorCollision: function() {
+  checkFloorCollision: function () {
     game.physics.arcade.collide(this.hero, this.floorArray[this.currentFloor], function() {
       this.canJump = true;
     }, null, this);
   },
-  checkLadderCollision: function() {
+  checkLadderCollision: function () {
     game.physics.arcade.overlap(this.hero, this.ladderArray, function(player, ladder) {
       if (!this.isClimbing && Math.abs(player.x - ladder.x) < 10) {
         this.hero.body.velocity.x = 0;
@@ -269,12 +272,12 @@ playGame.prototype = {
       }
     }, null, this);
   },
-  checkDiamondCollision: function() {
+  checkDiamondCollision: function () {
     game.physics.arcade.overlap(this.hero, this.diamondArray[this.currentFloor], function() {
       this.killDiamond(this.currentFloor);
     }, null, this);
   },
-  checkSpikeCollision: function() {
+  checkSpikeCollision: function () {
     game.physics.arcade.overlap(this.hero, this.spikeArray[this.currentFloor], function() {
       this.gameOver = true;
       this.hero.body.velocity.x = game.rnd.integerInRange(-20, 20);
@@ -295,7 +298,7 @@ playGame.prototype = {
     }
     this.spikeArray[floor] = [];
   },
-  heroOnLadder: function() {
+  heroOnLadder: function () {
     if (this.isClimbing && this.hero.y <= this.floorArray[this.currentFloor].y - gameOptions.floorGap - 40) {
       this.hero.body.gravity.y = gameOptions.playerGravity;
       this.hero.body.velocity.x = gameOptions.playerSpeed * this.hero.scale.x;
